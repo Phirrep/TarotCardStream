@@ -8,65 +8,14 @@ Add digits of result*/
 
 //num2 * 10 + (num1) = result => 1 combination
 //result = month + day + year1 + year2 => a lot
-
-
-//Year that calculations start from
-const minYear = 1994;
-//Allows for calculating days per month
-const calender = [
-    {month: 1, days: (leap) => 31},
-    {month: 2, days: (leap) => leap? 29:28},
-    {month: 3, days: (leap) => 31},
-    {month: 4, days: (leap) => 30},
-    {month: 5, days: (leap) => 31},
-    {month: 6, days: (leap) => 30},
-    {month: 7, days: (leap) => 31},
-    {month: 8, days: (leap) => 31},
-    {month: 9, days: (leap) => 30},
-    {month: 10, days: (leap) => 31},
-    {month: 11, days: (leap) => 30},
-    {month: 12, days: (leap) => 31}
-];
-//Respective birth cards and their combinations
-const birthCard = [
-    {card1: 21, card2: 3},
-    {card1: 20, card2: 2},
-    {card1: 19, card2: 10},
-    {card1: 18, card2: 9},
-    {card1: 17, card2: 8},
-    {card1: 16, card2: 7},
-    {card1: 15, card2: 6},
-    {card1: 14, card2: 5},
-    {card1: 13, card2: 4},
-    {card1: 12, card2: 3},
-    {card1: 11, card2: 2},
-    {card1: 10, card2: 1}
-];
-
-function snode(data, next){
-    return {
-        isEmpty: false,
-        head: () => data,
-        next: next.get
-    };
-}
-function sempty(){
-    return {
-        isEmpty: true
-    };
-}
-
-function memo0(f){
-    let r = {evaluated: false};
-    return {
-        get(){
-            if (r.evaluated === false){
-                r = {evaluated: true, v: f()}
-            }
-            return r.v;
-        }
-    }
-}
+var utils = require("./utils.js");
+const minYear = utils.minYear;
+const calendar = utils.calendar;
+const birthCards = utils.birthCards;
+const snode = utils.snode;
+const sempty = utils.sempty;
+const memo0 = utils.memo0;
+const dateObj = utils.dateObj;
 
 //tarotToCombination(tarot: int): {num1, num2}[]
 //num1: first 1/2 digits, num2: last digit
@@ -83,10 +32,11 @@ function tarotToCombination(tarot){
 //num1: first 1/2 digits, num2: last digit
 function combinationToDate(combination){
     let total = (combination.num1 * 10) + combination.num2;
-    let initDate = {month: 1, day: 0, year: {num1: Math.floor(minYear/100), num2: minYear % 100}};
+    let initDate = dateObj(1, 0, {num1: Math.floor(minYear/100), num2: minYear % 100});
     const firstDate = calcNextDate(initDate, total);
     return snodeDate(firstDate, total);
 }
+//snodeDate(date: dateObj, total: int): snode<date>
 function snodeDate(date, total){
     if (date === null){
         return sempty();
@@ -97,9 +47,9 @@ function snodeDate(date, total){
 
 //calcNextDate(date: {month, day, year: {num1, num2}}): date
 function calcNextDate(prevDate, total){
-    let date = {month: prevDate.month, day: prevDate.day + 1, year: {num1: prevDate.year.num1, num2: prevDate.year.num2}};
+    let date = dateObj(prevDate.month, prevDate.day + 1, {num1: prevDate.year.num1, num2: prevDate.year.num2});
     let currTotal = () => date.month + date.day + date.year.num1 + date.year.num2;
-    let currMonth = () => calender.filter(x => x.month === date.month)[0];
+    let currMonth = () => calendar.filter(x => x.month === date.month)[0];
     let newYear = function(){
         date.month = 1;
         date.day = 0;
@@ -135,6 +85,7 @@ function calcNextDate(prevDate, total){
     }
     return date;
 }
+//isEarlier(date1: date, date2: date): boolean
 //Returns true if date1 is earlier
 function isEarlier(date1, date2){
     if (date1.year.num1 != date2.year.num1){
@@ -153,6 +104,7 @@ function isEarlier(date1, date2){
         return {same: true, early: true};
     }
 }
+//combineStream(st1: snode<date>, st2: snode<date>): snode<date>
 //Combines the streams based on recent dates
 function combineStream(st1, st2){
     if (st1.isEmpty){
@@ -171,14 +123,17 @@ function combineStream(st1, st2){
         return snode(st2.head(), memo0(() => combineStream(st1, st2.next())));
     }
 }
+//tarotStream(tarot: int): snode<date>
 //Returns an snode stream of dates that correspond to the tarot cards
 function tarotStream(tarot){
     let combinations = tarotToCombination(tarot);
     let streams = combinations.map(x => combinationToDate(x));
     return streams.reduce((acc, e) => combineStream(acc, e), sempty());
 }
+//getTarotDates(tarot: int): snode<date>
+//Returns a stream of all/most dates that correspond to the respective dates for tarot cards
 function getTarotDates(tarot){
-    let combinations = birthCard.filter(x => x.card1 === tarot || x.card2 === tarot);
+    let combinations = birthCards.filter(x => x.card1 === tarot || x.card2 === tarot);
     let tarotNumbers = [];
     combinations.forEach(x => {tarotNumbers.push(x.card1);
         tarotNumbers.push(x.card2);});
