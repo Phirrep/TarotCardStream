@@ -9,7 +9,10 @@ Add digits of result*/
 //num2 * 10 + (num1) = result => 1 combination
 //result = month + day + year1 + year2 => a lot
 
-const minYear = 2002;
+
+//Year that calculations start from
+const minYear = 1994;
+//Allows for calculating days per month
 const calender = [
     {month: 1, days: (leap) => 31},
     {month: 2, days: (leap) => leap? 29:28},
@@ -24,14 +27,22 @@ const calender = [
     {month: 11, days: (leap) => 30},
     {month: 12, days: (leap) => 31}
 ];
+//Respective birth cards and their combinations
+const birthCard = [
+    {card1: 21, card2: 3},
+    {card1: 20, card2: 2},
+    {card1: 19, card2: 10},
+    {card1: 18, card2: 9},
+    {card1: 17, card2: 8},
+    {card1: 16, card2: 7},
+    {card1: 15, card2: 6},
+    {card1: 14, card2: 5},
+    {card1: 13, card2: 4},
+    {card1: 12, card2: 3},
+    {card1: 11, card2: 2},
+    {card1: 10, card2: 1}
+];
 
-// class snode{
-//     //data: Object, next: () => data
-//     constructor(data, next){
-//         this.head = () => data;
-//         this.next = next.get;
-//     }
-// }
 function snode(data, next){
     return {
         isEmpty: false,
@@ -59,6 +70,7 @@ function memo0(f){
 
 //tarotToCombination(tarot: int): {num1, num2}[]
 //num1: first 1/2 digits, num2: last digit
+//Returns possible total numbers that result in the tarot cards
 function tarotToCombination(tarot){
     let combinations = [];
     for (let i = 0; i < tarot && i < 10; i++){
@@ -88,6 +100,10 @@ function calcNextDate(prevDate, total){
     let date = {month: prevDate.month, day: prevDate.day + 1, year: {num1: prevDate.year.num1, num2: prevDate.year.num2}};
     let currTotal = () => date.month + date.day + date.year.num1 + date.year.num2;
     let currMonth = () => calender.filter(x => x.month === date.month)[0];
+    let newYear = function(){
+        date.month = 1;
+        date.day = 0;
+    }
     while (currTotal() != total){
         date.day += 1;
         if (date.year.num1 > total || date.year.num1 > 99){
@@ -95,10 +111,12 @@ function calcNextDate(prevDate, total){
         }
         if (12 + 31 + date.year.num1 + 99 < total){
             date.year.num1 += 1;
+            newYear();
             continue;
         }
         if (12 + 31 + date.year.num1 + date.year.num2 < total){
             date.year.num2 += 1;
+            newYear();
             continue;
         }
         if (date.day > currMonth().days(date.year.num2 % 4 === 0)){
@@ -107,14 +125,12 @@ function calcNextDate(prevDate, total){
         }
         if (date.month > 12){
             date.year.num2 += 1;
-            date.month = 1;
-            date.day = 1;
+            newYear();
         }
         if (date.year.num2 > 99){
             date.year.num1 += 1;
             date.year.num2 = 0;
-            date.month = 1;
-            date.day = 1;
+            newYear();
         }
     }
     return date;
@@ -122,7 +138,7 @@ function calcNextDate(prevDate, total){
 //Returns true if date1 is earlier
 function isEarlier(date1, date2){
     if (date1.year.num1 != date2.year.num1){
-        return (date1.year.num1 > date2.year.num2) ? {same: false, early: false}:{same: false, early: true};
+        return (date1.year.num1 > date2.year.num1) ? {same: false, early: false}:{same: false, early: true};
     }
     else if (date1.year.num2 != date2.year.num2){
         return (date1.year.num2 > date2.year.num2) ? {same: false, early: false}:{same: false, early: true};
@@ -137,6 +153,7 @@ function isEarlier(date1, date2){
         return {same: true, early: true};
     }
 }
+//Combines the streams based on recent dates
 function combineStream(st1, st2){
     if (st1.isEmpty){
         return st2;
@@ -154,20 +171,47 @@ function combineStream(st1, st2){
         return snode(st2.head(), memo0(() => combineStream(st1, st2.next())));
     }
 }
-
+//Returns an snode stream of dates that correspond to the tarot cards
 function tarotStream(tarot){
     let combinations = tarotToCombination(tarot);
     let streams = combinations.map(x => combinationToDate(x));
-    let accStream = streams[0];
-    for (let i = 1; i < streams.length; i++){
-        accStream = combineStream(accStream, streams[i]);
-    }
-    return accStream;
+    return streams.reduce((acc, e) => combineStream(acc, e), sempty());
+}
+function getTarotDates(tarot){
+    let combinations = birthCard.filter(x => x.card1 === tarot || x.card2 === tarot);
+    let tarotNumbers = [];
+    combinations.forEach(x => {tarotNumbers.push(x.card1);
+        tarotNumbers.push(x.card2);});
+    return tarotNumbers.reduce((acc, e) => combineStream(acc, tarotStream(e)), sempty());
 }
 
-module.exports.tarotStream = tarotStream;
-module.exports.snode = snode;
-module.exports.memo0 = memo0;
-module.exports.calcNextDate = calcNextDate;
-module.exports.combineStream = combineStream;
-module.exports.isEarlier = isEarlier;
+function printDate(date){
+    console.log(date);
+}
+function dateStr(date){
+    if (date === null){
+        return;
+    }
+    if (date.year.num2 < 10){
+        return date.month + "/" + date.day + "/" + date.year.num1 + "0" + date.year.num2;
+    }
+    else{
+        return date.month + "/" + date.day + "/" + date.year.num1 + date.year.num2;
+    }
+}
+function getSnode(st, index){
+    let currSnode = st;
+    for (let i = 0; i < index; i++){
+        if (currSnode.isEmpty){
+            return null;
+        }
+        currSnode = currSnode.next();
+    }
+    return currSnode;
+}
+
+
+module.exports.getTarotDates = getTarotDates;
+module.exports.getSnode = getSnode;
+module.exports.printDate = printDate;
+module.exports.dateStr = dateStr;
