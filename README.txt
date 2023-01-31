@@ -7,8 +7,9 @@ To calculate your tarot birth cards:
 - Then, you add the last digit of the total and the remaining digit(s)
 - Afterwards, based on the result, you find which card corresponds to the result to find your birth cards
 (see website above)
+The script (birthTarot.js) can calculate the cards that result from certain birthdays.
 
-The script does the opposite, and finds dates that result in specific birth cards.
+The script (tarotDates.js) does the opposite, and finds dates that result in specific birth cards.
 To do so, I've implemented a memoized stream to store most/all possible date combinations, starting
 from least recent to most recent.
 There is a minimum year that can be changed in the variable stored in tarot.js.
@@ -20,3 +21,4 @@ getTarotDates() function.
 
 The script can be used to return a stream of dates that all result in the birth cards, and you can
 iterate through the stream using getSnode() and print the dates using printDate().
+
